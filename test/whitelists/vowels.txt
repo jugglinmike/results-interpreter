@@ -1,0 +1,10 @@
+# This is a comment
+a # this comment follows a test ID
+
+# empty lines should be tolerated, too
+        # along with lots of trailing whitespace    
+e       # even on lines containing test IDs         
+i
+o
+
+u
