@@ -1,6 +1,6 @@
 # results-interpreter
 
-A [Node.js writeable
+A [Node.js transform
 stream](https://nodejs.org/dist/latest-v8.x/docs/api/stream.html) for
 interpreting streaming test results in accordance with a whitelist file.
 
@@ -16,17 +16,20 @@ var TestInterpreter = require('results-interpreter');
 // See the following section, "Input: results stream"
 var testResultStream = runMyTests();
 // See the following section, "Input: whitelist file"
-var interpreter = new TestInterpreter('path/to/a-whitelist-file.txt');
+var interpreter = new TestInterpreter('path/to/a-whitelist-file.txt', {
+  // (optional) See the following section, "Output: whitelist file"
+  outputFile: 'path/to/another-whitelist-file.txt'
+});
 
 testResultStream.pipe(interpreter)
   .on('error', function(error) {
     console.error(error);
     process.exitCode = 1;
   })
-  .on('finish', function() {
+  .on('data', function(summary) {
     // See the following section: "Output: `summary` object"
-    console.log(JSON.stringify(this.summary));
-    process.exitCode = this.summary.passed ? 0 : 1;
+    console.log(JSON.stringify(summary));
+    process.exitCode = summary.passed ? 0 : 1;
   });
 ```
 
@@ -51,8 +54,8 @@ character (`#`) will be interpreted as a comment and ignored.
 
 ### Output: `summary` object
 
-The `summary` property of the stream contains information about the test
-results.
+The stream emits a single `data` event with a `summary` object. This object
+contains information about the test results.
 
 - The following properties contain arrays of testIDs which satisfy
   expectations:
@@ -81,6 +84,21 @@ results.
     - `summary.unrecognized`
 - `summary.passed` - a boolean attribute describing whether the results
   completely meet expectations
+
+### Output: whitelist file
+
+The stream may optionally output a new version of the whitelist file based on
+the provided whitelist file. The contents of the output file will be based on
+the input whitelist, modified to satisfy the behavior of the test run.
+Specifically:
+
+- Lines referencing tests which no longer violate expectations will be removed
+  (including trailing comments, if present)
+- The identifiers for tests which violated expectations will be appended
+- Lines referencing tests which had no corresponding object in the provided
+  results stream will be removed (including trailing comments, if present)
+
+All other lines (including comment lines) will be persisted in the output file.
 
 ## License
 

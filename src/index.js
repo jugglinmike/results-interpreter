@@ -4,7 +4,7 @@ var fs = require('fs');
 var Writable = require('stream').Transform;
 var util= require('util');
 
-var parseWhitelist = require('./parse-whitelist');
+var whitelist = require('./whitelist');
 
 var Interpreter = module.exports = function Interpreter(whitelist, options) {
   options = options || {};
@@ -12,8 +12,10 @@ var Interpreter = module.exports = function Interpreter(whitelist, options) {
   Writable.call(this, options);
 
   this._whitelistName = whitelist;
+  this._whitelistText = null;
   this._whitelist = null;
-  this.summary = {
+  this._outputFile = options.outputFile;
+  this._summary = {
     passed: true,
     allowed: {
       success: [],
@@ -33,38 +35,55 @@ var Interpreter = module.exports = function Interpreter(whitelist, options) {
 
 util.inherits(Interpreter, Writable);
 
-Interpreter.prototype._write = function(result, encoding, callback) {
+Interpreter.prototype._transform = function(result, encoding, callback) {
   if (this._whitelist === null) {
-    this._readWhitelist(function(err) {
+    fs.readFile(this._whitelistName, 'utf-8', function(err, contents) {
       if (err) {
-        this.emit('error', err);
+        callback(err);
         return;
       }
 
-      callback(this.interpret(result));
+      this._whitelistText = contents;
+      this._whitelist = whitelist.parse(contents);
+
+      this.interpret(result);
+      callback(null);
     }.bind(this));
     return;
   }
 
-  callback(this.interpret(result));
-};
-
-Interpreter.prototype._readWhitelist = function(done) {
-  fs.readFile(this._whitelistName, 'utf-8', function(err, contents) {
-    if (!err) {
-      this._whitelist = parseWhitelist(contents);
-    }
-
-    done(err);
-  }.bind(this));
+  this.interpret(result);
+  callback(null);
 };
 
 Interpreter.prototype._flush = function(done) {
-  this.summary.unrecognized.push.apply(this.summary.unrecognized, Object.keys(this._whitelist));
-  if (this.summary.unrecognized.length > 0) {
-    this.summary.passed = false;
+  var summary = this._summary;
+
+  if (!this._whitelist) {
+    done();
+    return;
   }
-  done();
+
+  summary.unrecognized.push.apply(summary.unrecognized, Object.keys(this._whitelist));
+  if (summary.unrecognized.length > 0) {
+    summary.passed = false;
+  }
+
+  if (!this._outputFile) {
+    this.push(summary);
+    done(null);
+    return;
+  }
+
+  var output = whitelist.update(this._whitelistText, summary);
+  fs.writeFile(this._outputFile, output, 'utf-8', function(error) {
+    if (error) {
+      done(error);
+      return;
+    }
+    this.push(summary);
+    done(null);
+  }.bind(this));
 };
 
 Interpreter.prototype.interpret = function(result) {
@@ -91,7 +110,7 @@ Interpreter.prototype.interpret = function(result) {
     }
   }
 
-  this.summary.passed = this.summary.passed && isAllowed;
-  this.summary[isAllowed ? 'allowed' : 'disallowed'][classification]
+  this._summary.passed = this._summary.passed && isAllowed;
+  this._summary[isAllowed ? 'allowed' : 'disallowed'][classification]
     .push(result.id);
 };

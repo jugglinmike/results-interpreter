@@ -1,7 +1,7 @@
 {
   "name": "results-interpreter",
   "version": "0.0.0",
-  "description": "A Node.js writeable stream for interpreting streaming test results",
+  "description": "A Node.js transform stream for interpreting streaming test results",
   "main": "src/index.js",
   "scripts": {
     "lint": "jshint src test",

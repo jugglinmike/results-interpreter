@@ -1,5 +1,6 @@
 'use strict';
 
+var fs = require('fs');
 var test = require('tape');
 var MockStream = require('./mock-stream');
 var Interpreter = require('..');
@@ -13,8 +14,8 @@ test('empty whitelist (passing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
-    .on('finish', function() {
-      t.deepEqual(this.summary, {
+    .on('data', function(summary) {
+      t.deepEqual(summary, {
         passed: true,
         allowed: {
           success: ['b', 'c'],
@@ -44,8 +45,8 @@ test('empty whitelist (failing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
-    .on('finish', function() {
-      t.deepEqual(this.summary, {
+    .on('data', function(summary) {
+      t.deepEqual(summary, {
         passed: false,
         allowed: {
           success: ['a'],
@@ -78,8 +79,8 @@ test('non-empty whitelist (passing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
-    .on('finish', function() {
-      t.deepEqual(this.summary, {
+    .on('data', function(summary) {
+      t.deepEqual(summary, {
         passed: true,
         allowed: {
           success: ['z'],
@@ -112,8 +113,8 @@ test('non-empty whitelist (failing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
-    .on('finish', function() {
-      t.deepEqual(this.summary, {
+    .on('data', function(summary) {
+      t.deepEqual(summary, {
         passed: false,
         allowed: {
           success: ['z'],
@@ -144,8 +145,8 @@ test('unrecognized whitelist entries', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
-    .on('finish', function() {
-      t.deepEqual(this.summary, {
+    .on('data', function(summary) {
+      t.deepEqual(summary, {
         passed: false,
         allowed: {
           success: ['z'],
@@ -176,8 +177,78 @@ test('non-existent whitelist', function(t) {
       t.ok(err);
       t.end();
     })
-    .on('finish', function() {
-      t.error(new Error('Unexpected "finish" event.'));
+    .on('data', function() {
+      t.error(new Error('Unexpected "data" event.'));
       t.end();
+    });
+});
+
+test('update whitelist', function(t) {
+  var src = __dirname + '/whitelists/vowels.txt';
+  var dest = __dirname + '/whitelists/vowels-copy.txt';
+  function end() {
+    fs.unlink(dest, function(error) {
+      if (error) {
+        t.error(error);
+      }
+      t.end();
+    });
+  }
+  var expectedWhitelist = [
+    '# This is a comment',
+    'a # this comment follows a test ID',
+    '',
+    '# empty lines should be tolerated, too',
+    '        # along with lots of trailing whitespace    ',
+    'e       # even on lines containing test IDs         ',
+    '',
+    '',
+    'x',
+    'w'
+  ];
+  var s = new MockStream([
+    { id: 'a', expected: 'fail', actual: 'pass' },
+    { id: 'e', expected: 'pass', actual: 'fail' },
+    { id: 'i', expected: 'pass', actual: 'pass' },
+    { id: 'o', expected: 'fail', actual: 'fail' },
+    { id: 'w', expected: 'pass', actual: 'fail' },
+    { id: 'x', expected: 'fail', actual: 'pass' },
+    { id: 'y', expected: 'fail', actual: 'fail' },
+    { id: 'z', expected: 'pass', actual: 'pass' }
+  ]);
+
+  s.pipe(new Interpreter(src, { outputFile: dest }))
+    .on('error', function(error) {
+      t.error(error);
+      end();
+    })
+    .on('data', function(summary) {
+      t.deepEqual(summary, {
+        passed: false,
+        allowed: {
+          success: ['z'],
+          failure: ['y'],
+          falsePositive: ['a'],
+          falseNegative: ['e']
+        },
+        disallowed: {
+          success: ['i'],
+          failure: ['o'],
+          falsePositive: ['x'],
+          falseNegative: ['w']
+        },
+        unrecognized: ['u']
+      });
+
+      fs.readFile(dest, 'utf-8', function(error, contents) {
+        if (error) {
+          t.error(error);
+          end();
+          return;
+        }
+
+        t.deepEqual(contents.split('\n'), expectedWhitelist);
+        end();
+      });
     });
 });
