@@ -4,6 +4,8 @@ A [Node.js transform
 stream](https://nodejs.org/dist/latest-v8.x/docs/api/stream.html) for
 interpreting streaming test results in accordance with a whitelist file.
 
+[![Build Status](https://travis-ci.org/jugglinmike/test-interpreter.svg?branch=master)](https://travis-ci.org/jugglinmike/test-interpreter)
+
 ## Installation
 
     npm install --save-dev results-interpreter
