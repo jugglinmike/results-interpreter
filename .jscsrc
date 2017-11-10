@@ -1,0 +1,8 @@
+{
+  "disallowMixedSpacesAndTabs": true,
+  "disallowMultipleSpaces": true,
+  "disallowTrailingWhitespace": true,
+  "maximumLineLength": 80,
+  "validateIndentation": 2,
+  "validateQuoteMarks": "'"
+}

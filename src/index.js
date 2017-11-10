@@ -33,7 +33,7 @@ var Interpreter = module.exports = function Interpreter(whitelist, options) {
       falsePositive: [],
       falseNegative: [],
     },
-    unrecognized: []
+    unrecognized: null
   };
 };
 
@@ -96,7 +96,8 @@ Interpreter.prototype._cleanup = function(done) {
     return;
   }
 
-  summary.unrecognized.push.apply(summary.unrecognized, Object.keys(this._whitelist));
+  summary.unrecognized = Object.keys(this._whitelist);
+
   if (summary.unrecognized.length > 0) {
     summary.passed = false;
   }
