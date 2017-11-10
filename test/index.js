@@ -6,14 +6,14 @@ var MockStream = require('./mock-stream');
 var Interpreter = require('..');
 
 test('empty whitelist (passing)', function(t) {
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'fail', actual: 'fail' },
     { id: 'b', expected: 'pass', actual: 'pass' },
     { id: 'c', expected: 'pass', actual: 'pass' },
     { id: 'd', expected: 'fail', actual: 'fail' }
   ]);
 
-  s.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
+  results.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
     .on('finish', function() {
       t.deepEqual(this.summary, {
         passed: true,
@@ -37,14 +37,14 @@ test('empty whitelist (passing)', function(t) {
 });
 
 test('empty whitelist (failing)', function(t) {
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'pass', actual: 'pass' },
     { id: 'b', expected: 'pass', actual: 'fail' },
     { id: 'c', expected: 'fail', actual: 'pass' },
     { id: 'd', expected: 'fail', actual: 'fail' }
   ]);
 
-  s.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
+  results.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
     .on('finish', function() {
       t.deepEqual(this.summary, {
         passed: false,
@@ -68,7 +68,7 @@ test('empty whitelist (failing)', function(t) {
 });
 
 test('non-empty whitelist (passing)', function(t) {
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'fail', actual: 'pass' },
     { id: 'e', expected: 'pass', actual: 'fail' },
     { id: 'i', expected: 'pass', actual: 'fail' },
@@ -78,7 +78,7 @@ test('non-empty whitelist (passing)', function(t) {
     { id: 'z', expected: 'pass', actual: 'pass' }
   ]);
 
-  s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
+  results.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
     .on('finish', function() {
       t.deepEqual(this.summary, {
         passed: true,
@@ -102,7 +102,7 @@ test('non-empty whitelist (passing)', function(t) {
 });
 
 test('non-empty whitelist (failing)', function(t) {
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'fail', actual: 'fail' },
     { id: 'e', expected: 'pass', actual: 'pass' },
     { id: 'i', expected: 'pass', actual: 'pass' },
@@ -112,7 +112,7 @@ test('non-empty whitelist (failing)', function(t) {
     { id: 'z', expected: 'pass', actual: 'pass' }
   ]);
 
-  s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
+  results.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
     .on('finish', function() {
       t.deepEqual(this.summary, {
         passed: false,
@@ -136,7 +136,7 @@ test('non-empty whitelist (failing)', function(t) {
 });
 
 test('unrecognized whitelist entries', function(t) {
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'fail', actual: 'pass' },
     { id: 'i', expected: 'pass', actual: 'fail' },
     { id: 'u', expected: 'fail', actual: 'pass' },
@@ -144,7 +144,7 @@ test('unrecognized whitelist entries', function(t) {
     { id: 'z', expected: 'pass', actual: 'pass' }
   ]);
 
-  s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
+  results.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
     .on('finish', function() {
       t.deepEqual(this.summary, {
         passed: false,
@@ -168,11 +168,11 @@ test('unrecognized whitelist entries', function(t) {
 });
 
 test('non-existent whitelist', function(t) {
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'pass', actual: 'pass' }
   ]);
 
-  s.pipe(new Interpreter(__dirname + '/whitelists/non-existent-file.txt'))
+  results.pipe(new Interpreter(__dirname + '/whitelists/non-existent-file.txt'))
     .on('error', function(err) {
       t.equal(this.summary, null);
       t.ok(err);
@@ -207,7 +207,7 @@ test('update whitelist', function(t) {
     'x',
     'w'
   ];
-  var s = new MockStream([
+  var results = new MockStream([
     { id: 'a', expected: 'fail', actual: 'pass' },
     { id: 'e', expected: 'pass', actual: 'fail' },
     { id: 'i', expected: 'pass', actual: 'pass' },
@@ -218,7 +218,7 @@ test('update whitelist', function(t) {
     { id: 'z', expected: 'pass', actual: 'pass' }
   ]);
 
-  s.pipe(new Interpreter(src, { outputFile: dest }))
+  results.pipe(new Interpreter(src, { outputFile: dest }))
     .on('error', function(error) {
       t.error(error);
       end();
