@@ -14,8 +14,8 @@ test('empty whitelist (passing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
-    .on('data', function(summary) {
-      t.deepEqual(summary, {
+    .on('finish', function() {
+      t.deepEqual(this.summary, {
         passed: true,
         allowed: {
           success: ['b', 'c'],
@@ -45,8 +45,8 @@ test('empty whitelist (failing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/empty.txt'))
-    .on('data', function(summary) {
-      t.deepEqual(summary, {
+    .on('finish', function() {
+      t.deepEqual(this.summary, {
         passed: false,
         allowed: {
           success: ['a'],
@@ -79,8 +79,8 @@ test('non-empty whitelist (passing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
-    .on('data', function(summary) {
-      t.deepEqual(summary, {
+    .on('finish', function() {
+      t.deepEqual(this.summary, {
         passed: true,
         allowed: {
           success: ['z'],
@@ -113,8 +113,8 @@ test('non-empty whitelist (failing)', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
-    .on('data', function(summary) {
-      t.deepEqual(summary, {
+    .on('finish', function() {
+      t.deepEqual(this.summary, {
         passed: false,
         allowed: {
           success: ['z'],
@@ -145,8 +145,8 @@ test('unrecognized whitelist entries', function(t) {
   ]);
 
   s.pipe(new Interpreter(__dirname + '/whitelists/vowels.txt'))
-    .on('data', function(summary) {
-      t.deepEqual(summary, {
+    .on('finish', function() {
+      t.deepEqual(this.summary, {
         passed: false,
         allowed: {
           success: ['z'],
@@ -174,10 +174,11 @@ test('non-existent whitelist', function(t) {
 
   s.pipe(new Interpreter(__dirname + '/whitelists/non-existent-file.txt'))
     .on('error', function(err) {
+      t.equal(this.summary, null);
       t.ok(err);
       t.end();
     })
-    .on('data', function() {
+    .on('finish', function() {
       t.error(new Error('Unexpected "data" event.'));
       t.end();
     });
@@ -222,8 +223,8 @@ test('update whitelist', function(t) {
       t.error(error);
       end();
     })
-    .on('data', function(summary) {
-      t.deepEqual(summary, {
+    .on('finish', function() {
+      t.deepEqual(this.summary, {
         passed: false,
         allowed: {
           success: ['z'],

@@ -1,6 +1,6 @@
 # results-interpreter
 
-A [Node.js transform
+A [Node.js writable
 stream](https://nodejs.org/dist/latest-v8.x/docs/api/stream.html) for
 interpreting streaming test results in accordance with a whitelist file.
 
@@ -28,10 +28,10 @@ testResultStream.pipe(interpreter)
     console.error(error);
     process.exitCode = 1;
   })
-  .on('data', function(summary) {
+  .on('finish', function() {
     // See the following section: "Output: `summary` object"
-    console.log(JSON.stringify(summary));
-    process.exitCode = summary.passed ? 0 : 1;
+    console.log(JSON.stringify(this.summary));
+    process.exitCode = this.summary.passed ? 0 : 1;
   });
 ```
 
@@ -56,8 +56,9 @@ character (`#`) will be interpreted as a comment and ignored.
 
 ### Output: `summary` object
 
-The stream emits a single `data` event with a `summary` object. This object
-contains information about the test results.
+Once results interpretation is complete (and after a new whitelist file has
+been created--see below), the stream will define a `summary` property with an
+object value. This object contains information about the test results.
 
 - The following properties contain arrays of testIDs which satisfy
   expectations:

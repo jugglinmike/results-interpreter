@@ -1,7 +1,7 @@
 'use strict';
 
 var fs = require('fs');
-var Writable = require('stream').Transform;
+var Writable = require('stream').Writable;
 var util= require('util');
 
 var whitelist = require('./whitelist');
@@ -15,6 +15,10 @@ var Interpreter = module.exports = function Interpreter(whitelist, options) {
   this._whitelistText = null;
   this._whitelist = null;
   this._outputFile = options.outputFile;
+  // This property will store a bound version of the `_cleanup` method in the
+  // event that the stream is closed before the whitelist file has been read.
+  this._deferredCleanup = null;
+  this.summary = null;
   this._summary = {
     passed: true,
     allowed: {
@@ -35,7 +39,7 @@ var Interpreter = module.exports = function Interpreter(whitelist, options) {
 
 util.inherits(Interpreter, Writable);
 
-Interpreter.prototype._transform = function(result, encoding, callback) {
+Interpreter.prototype._write = function(result, encoding, callback) {
   if (this._whitelist === null) {
     fs.readFile(this._whitelistName, 'utf-8', function(err, contents) {
       if (err) {
@@ -48,6 +52,11 @@ Interpreter.prototype._transform = function(result, encoding, callback) {
 
       this.interpret(result);
       callback(null);
+
+      if (this._deferredCleanup) {
+        this._deferredCleanup();
+        this._deferredCleanup = null;
+      }
     }.bind(this));
     return;
   }
@@ -56,11 +65,34 @@ Interpreter.prototype._transform = function(result, encoding, callback) {
   callback(null);
 };
 
-Interpreter.prototype._flush = function(done) {
+/**
+ * If the stream has been configured to write a new whitelist file to disk, the
+ * `finish` event should be delayed until after the write operation has
+ * completed successfully.
+ *
+ * Override `Writable.prototype.end` in order to achieve this.
+ */
+Interpreter.prototype.end = function(chunk, encoding, callback) {
+  var end = Writable.prototype.end.bind(this, null, null, callback);
+
+  if (chunk) {
+    this.write(chunk, encoding, function(err) {
+      if (err) {
+        return;
+      }
+
+      this._cleanup(end);
+    }.bind(this));
+    return;
+  }
+  this._cleanup(end);
+};
+
+Interpreter.prototype._cleanup = function(done) {
   var summary = this._summary;
 
   if (!this._whitelist) {
-    done();
+    this._deferredCleanup = this._cleanup.bind(this, done);
     return;
   }
 
@@ -70,7 +102,7 @@ Interpreter.prototype._flush = function(done) {
   }
 
   if (!this._outputFile) {
-    this.push(summary);
+    this.summary = summary;
     done(null);
     return;
   }
@@ -81,7 +113,7 @@ Interpreter.prototype._flush = function(done) {
       done(error);
       return;
     }
-    this.push(summary);
+    this.summary = summary;
     done(null);
   }.bind(this));
 };
